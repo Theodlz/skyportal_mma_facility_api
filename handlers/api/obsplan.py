@@ -35,8 +35,8 @@ class ObsPlanHandler(tornado.web.RequestHandler):
         # delete an item from the queue, based on the queue_name
         queue_name = self.get_argument("queue_name")
         print("Removing", queue_name)
-        removed = queue.remove(queue_name)
-        if removed:
+        removed = await queue.remove(queue_name)
+        if removed is True:
             self.set_status(200)
         else:
             self.set_status(400)

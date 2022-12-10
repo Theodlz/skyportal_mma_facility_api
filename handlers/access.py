@@ -29,6 +29,6 @@ def auth_or_token(method):
                 raise tornado.web.HTTPError(401)
             return method(self, *args, **kwargs)
         else:
-            return tornado.web.authenticated(method)(self, *args, **kwargs)
+            raise tornado.web.HTTPError(401)
 
     return wrapper
