@@ -5,7 +5,6 @@ from handlers.access import auth_or_token
 queue = FacilityQueue()
 
 class FacilityHandler(tornado.web.RequestHandler):
-    @auth_or_token
     def get(self):
         # return info about the facility, so a list of telescopes with:
         # - telescope:
