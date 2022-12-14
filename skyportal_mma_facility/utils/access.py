@@ -1,5 +1,7 @@
 import functools
 import tornado
+
+
 def auth_or_token(method):
     """Ensure that a user is signed in.
 
@@ -20,10 +22,10 @@ def auth_or_token(method):
             token = token_header.replace("token", "").strip()
 
             #### TODO: verify if token is correct in your database
-            
+
             if token is not None:
                 self.current_user = token
-                if token not in ["123"]: # fake list of tokens
+                if token not in ["123"]:  # fake list of tokens
                     raise tornado.web.HTTPError(401)
             else:
                 raise tornado.web.HTTPError(401)

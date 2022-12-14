@@ -1,1 +1,6 @@
 __pycache__/
+run/
+log/
+env/
+permanent/
+temp/
