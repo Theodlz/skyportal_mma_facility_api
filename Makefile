@@ -2,7 +2,7 @@ SHELL = /bin/bash
 
 # Use `config.yaml` by default, unless overridden by user
 # through setting FLAGS environment variable
-FLAGS:=$(if $(FLAGS),$(FLAGS),--config=config.yaml,--debug)
+FLAGS:=$(if $(FLAGS),$(FLAGS),--config=config.yaml)
 
 PYTHON=PYTHONPATH=. python
 
@@ -36,3 +36,10 @@ run: system_setup
 	echo "Press Ctrl-C to abort the server" && \
 	echo && \
 	$(SUPERVISORD)
+
+monitor: ## Monitor microservice status.
+	@echo "Entering supervisor control panel."
+	@echo
+	@echo " - Type \`status\` to see microservice status"
+	@echo
+	@$(SUPERVISORCTL) -i
