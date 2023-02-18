@@ -1,13 +1,15 @@
 import os
+import time
+from datetime import datetime
 import asyncio
-from tornado import gen
 from collections import deque
 from skyportal_mma_facility.models import DBSession, ObservationPlan, Observation
 
 from skyportal_mma_facility.models import init_db
 from skyportal_mma_facility.utils.env import load_env
+from skyportal_mma_facility.utils.log import make_log
 
-import time
+log = make_log("obsqueue")
 
 env, cfg = load_env()
 
@@ -19,11 +21,11 @@ init_db(
 
 # if it does not exist, create a permanent folder for the observation plans images to be stored
 # it should be at the root of the project
-if not os.path.exists("permanent"):
-    os.mkdir("permanent")
 
-if not os.path.exists("permanent/observations"):
-    os.mkdir("permanent/observations")
+root = cfg.get("observation_data_directory", "observations_data")
+
+if not os.path.exists(root):
+    os.makedirs(root)
 
 
 class ObservationPlanQueue(asyncio.Queue):
@@ -48,7 +50,7 @@ class ObservationPlanQueue(asyncio.Queue):
             self._obsplan_id = None
 
         if self._obsplan_id is None:
-            print("Loading observation plan")
+            log("Loading observation plan")
             # get the oldest observation plan that is still pending
             observation_plan = (
                 session.query(ObservationPlan)
@@ -56,18 +58,24 @@ class ObservationPlanQueue(asyncio.Queue):
                     (ObservationPlan.status == "pending")
                     | (ObservationPlan.status == "processing")
                 )
+                .filter(ObservationPlan.validity_window_start < datetime.utcnow())
                 .order_by(ObservationPlan.created_at)
                 .first()
             )
-            print(observation_plan)
             if observation_plan is not None:
-                # set the observation plan to processing
-                observation_plan.status = "processing"
-                session.commit()
-                # add the observation plan to the queue
-                self._obsplan_id = observation_plan.id
-                print(f"Added {observation_plan.queue_name} to the queue")
-                loaded_new_plan = True
+                if observation_plan.validity_window_end < datetime.utcnow():
+                    # the observation plan is not valid anymore, skip it
+                    observation_plan.status = "missed"
+                    session.commit()
+                    timeout = 15
+                else:
+                    # set the observation plan to processing
+                    observation_plan.status = "processing"
+                    session.commit()
+                    # add the observation plan to the queue
+                    self._obsplan_id = observation_plan.id
+                    log(f"Added {observation_plan.queue_name} to the queue")
+                    loaded_new_plan = True
             else:
                 # wait 5 seconds and try again
                 timeout = 15
@@ -93,22 +101,24 @@ class ObservationPlanQueue(asyncio.Queue):
     async def service(self):
         while True:
             # if the queue is empty, load the oldest observation plan that is still pending
-            with DBSession() as session:
+            try:
+                with DBSession() as session:
 
-                loaded_new_plan, timeout = await self.load_plan(session)
+                    loaded_new_plan, timeout = await self.load_plan(session)
 
-                if loaded_new_plan:
-                    await self.load_queue(session)
+                    if loaded_new_plan:
+                        await self.load_queue(session)
 
-                if timeout > 0:
-                    print(f"Waiting {timeout} seconds")
-                    time.sleep(timeout)
+                    if timeout > 0:
+                        await asyncio.sleep(timeout)
 
-                if len(self._queue) > 0:
-                    item = await self.get()
-                    print(f"Got {item} from the queue")
-                    await self.processing(item, session)
-                    self.task_done()
+                    if len(self._queue) > 0:
+                        item = await self.get()
+                        log(f"Got {item} from the queue")
+                        await self.processing(item, session)
+                        self.task_done()
+            except Exception as e:
+                await asyncio.sleep(5)
 
     async def processing(self, item, session):
         # trigger the obs on the facility, ...
@@ -117,13 +127,13 @@ class ObservationPlanQueue(asyncio.Queue):
         obs.status = "processing"
         session.commit()
 
-        print(f"Processing {obs.id}")
+        log(f"Processing {obs.id}")
         ### TODO: trigger the observation on the facility, and update the status of the observation along with the result
         ### For now, we fake that part
 
         ### FAKE PROCESSING
-        time.sleep(10)
-        path = f"permanent/observations/{obs.id}.fits"
+        await asyncio.sleep(10)
+        path = os.path.join(root, f"{obs.id}.fits")
         with open(path, "w") as f:
             f.write("This is a fake image")
         ### END FAKE PROCESSING
@@ -134,6 +144,20 @@ class ObservationPlanQueue(asyncio.Queue):
 
 
 queue = ObservationPlanQueue()
+
+log("Waiting for the database to be ready")
+db_connected = 0
+while db_connected < 10:
+    try:
+        with DBSession() as session:
+            obsplan = session.query(ObservationPlan).first()
+            db_connected += 1
+            time.sleep(1)
+    except Exception as e:
+        log(f"Coud not connect to the database, retrying in 5 seconds")
+        time.sleep(1)
+
+log("Starting the queue service")
 
 loop = asyncio.get_event_loop()
 loop.create_task(queue.service())

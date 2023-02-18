@@ -16,7 +16,7 @@ B=\033[1m
 N=\033[0m
 
 paths:
-	@mkdir -p log run tmp
+	@mkdir -p log run
 	@mkdir -p ./log/sv_child
 
 system_setup: | paths
@@ -43,3 +43,12 @@ monitor: ## Monitor microservice status.
 	@echo " - Type \`status\` to see microservice status"
 	@echo
 	@$(SUPERVISORCTL) -i
+
+log: ## Monitor log files for all services.
+log: paths
+	@PYTHONPATH=. PYTHONUNBUFFERED=1 python skyportal_mma_facility/utils/log.py
+
+clear: # clear the database
+db_clear: paths
+	   @echo "Clearing the database"
+	   @$(PYTHON) skyportal_mma_facility/utils/model_util.py $(FLAGS)

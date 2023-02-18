@@ -7,3 +7,5 @@ database:
   port: 5432
   user: facility
   password:
+
+observations_data: persistentdata/observations

@@ -54,7 +54,7 @@ def create_tables(retry=5, add=True):
         try:
             conn = models.DBSession.session_factory.kw["bind"]
             print(f"Creating tables on database {conn.url.database}")
-            models.Base.metadata.create_all()
+            models.Base.metadata.create_all(conn)
 
             table_list = ", ".join(list(models.Base.metadata.tables.keys()))
             print(f"Refreshed tables: {table_list}")
@@ -85,3 +85,16 @@ def recursive_to_dict(obj):
     if hasattr(obj, "__table__"):  # SQLAlchemy model
         return recursive_to_dict(obj.to_dict())
     return obj
+
+
+if __name__ == "__main__":
+    from skyportal_mma_facility.models import init_db
+    from skyportal_mma_facility.utils.env import load_env
+
+    env, cfg = load_env()
+    init_db(
+        **cfg["database"],
+        autoflush=False,
+        engine_args={"pool_size": 10, "max_overflow": 15, "pool_recycle": 3600},
+    )
+    clear_tables()

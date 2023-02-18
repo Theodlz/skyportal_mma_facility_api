@@ -9,12 +9,36 @@ from sqlalchemy.ext.hybrid import hybrid_property
 
 class Observation(Base):
 
-    # we want the date, exposure_time, and a completed flag
-    date = sa.Column(
-        sa.DateTime,
-        nullable=True,
-        default=None,
-        doc="The date of the observation, set when it is completed.",
+    # SKYPORTAL SPECIFIC
+
+    request_id = sa.Column(
+        sa.Integer,
+        nullable=False,
+        doc="The ID of the request of the observation.",
+    )
+
+    field_id = sa.Column(
+        sa.BigInteger,
+        nullable=False,
+        doc="The ID of the field of the observation.",
+    )
+
+    ra = sa.Column(
+        sa.Float,
+        nullable=False,
+        doc="The RA of the observation.",
+    )
+
+    dec = sa.Column(
+        sa.Float,
+        nullable=False,
+        doc="The DEC of the observation.",
+    )
+
+    filter = sa.Column(
+        sa.String,
+        nullable=False,
+        doc="The sncosmo filter used for the observation.",
     )
 
     exposure_time = sa.Column(
@@ -23,11 +47,13 @@ class Observation(Base):
         doc="The exposure time of the observation.",
     )
 
-    filter = sa.Column(
+    program_pi = sa.Column(
         sa.String,
         nullable=False,
-        doc="The sncosmo filter used for the observation.",
+        doc="The PI of the program of the observation.",
     )
+
+    # END SKYPORTAL SPECIFIC
 
     status = sa.Column(
         sa.String,
@@ -37,19 +63,20 @@ class Observation(Base):
         doc="Status of the observation.",
     )
 
+    # we want the date, exposure_time, and a completed flag
+    date = sa.Column(
+        sa.DateTime,
+        nullable=True,
+        default=None,
+        doc="The date of the observation, set when it is completed.",
+    )
+
     _fits_path = sa.Column(
         "fits",
         sa.String,
         nullable=True,
         doc="The path to the FITS file of the observation. Added once the observation is completed.",
     )
-
-    def save(self, path):
-        self._fits_path = path
-
-    def data(self):
-        # later, we want that method to open the fits file and return the data
-        return self._fits_path
 
     instrument_id = sa.Column(
         sa.ForeignKey("instruments.id", ondelete="CASCADE"),
@@ -76,6 +103,13 @@ class Observation(Base):
         doc="The Observation Plan that contains the observation.",
     )
 
+    def save(self, path):
+        self._fits_path = path
+
+    def data(self):
+        # later, we want that method to open the fits file and return the data
+        return self._fits_path
+
 
 class ObservationPlan(Base):
 
@@ -86,6 +120,12 @@ class ObservationPlan(Base):
         unique=True,
         doc="The name of the queue that the observation plan is part of.",
         index=True,
+    )
+
+    user = sa.Column(
+        sa.String,
+        nullable=False,
+        doc="The user that created the observation plan.",
     )
 
     status = sa.Column(
@@ -106,6 +146,18 @@ class ObservationPlan(Base):
         "Instrument",
         back_populates="observation_plans",
         doc="The Instrument that hosts the Observation Plan.",
+    )
+
+    validity_window_start = sa.Column(
+        sa.DateTime,
+        nullable=False,
+        doc="The start of the validity window of the observation plan.",
+    )
+
+    validity_window_end = sa.Column(
+        sa.DateTime,
+        nullable=False,
+        doc="The end of the validity window of the observation plan.",
     )
 
     payload = sa.Column(

@@ -7,6 +7,9 @@ import textwrap
 from skyportal_mma_facility.utils.status import status
 
 from skyportal_mma_facility.utils.env import load_env
+from skyportal_mma_facility.utils.log import make_log
+
+log = make_log("app")
 
 parser = argparse.ArgumentParser(description="Create or re-create the database.")
 parser.add_argument(
@@ -55,7 +58,7 @@ def test_db(database):
     return p.returncode == 0
 
 
-print("Initializing databases")
+log("Initializing databases")
 
 with status(f"Creating user [{user}]"):
     run(f'{psql_cmd} {admin_flags} -c "CREATE USER {user};"')

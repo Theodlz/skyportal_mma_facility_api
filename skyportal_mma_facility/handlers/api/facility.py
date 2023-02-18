@@ -70,15 +70,6 @@ class InstrumentHandler(BaseHandler):
     @auth_or_token
     def post(self):
         data = self.get_json()
-
-        # lets fake the data for now
-        data = {
-            "name": "fake instrument",
-            "type": "imager",
-            "band": "Optical",
-            "telescope_id": 1,
-            "filters": ["ztfr", "ztfg", "ztfi"],
-        }
         try:
             with self.Session() as session:
                 instrument = Instrument(**data)

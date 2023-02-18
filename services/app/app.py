@@ -2,8 +2,10 @@
 
 import tornado.web
 from tornado.ioloop import IOLoop
-from skyportal_mma_facility.utils.env import load_env
+from skyportal_mma_facility.utils import load_env, make_log
 from skyportal_mma_facility.app_server import make_app
+
+log = make_log("app")
 
 env, cfg = load_env()
 
@@ -15,5 +17,5 @@ address = "127.0.0.1"
 
 app.listen(port, xheaders=True, address=address)
 
-print(f"Listening on {address}:{port}")
+log(f"Listening on {address}:{port}")
 tornado.ioloop.IOLoop.current().start()

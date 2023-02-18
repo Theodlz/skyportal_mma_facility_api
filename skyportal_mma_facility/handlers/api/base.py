@@ -7,6 +7,7 @@ import uuid
 import time
 from json.decoder import JSONDecodeError
 from skyportal_mma_facility.utils.env import load_env
+from skyportal_mma_facility.utils.log import make_log
 from skyportal_mma_facility.utils.json_util import to_json
 
 env, cfg = load_env()
@@ -46,6 +47,7 @@ class BaseHandler(RequestHandler):
             # must merge the user object with the current session
             # ref: https://docs.sqlalchemy.org/en/14/orm/session_basics.html#adding-new-or-existing-items
             # session.add(self.current_user) # TODO: reimplement when adding user concepts
+            session.bind = DBSession.session_factory.kw["bind"]
             yield session
 
     def on_finish(self):
